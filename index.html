@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MYSTIC TAROT AI — ARCANE EDITION</title>
+
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Cinzel', 'serif'],
+            sans: ['Noto Sans KR', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: { 900: '#050508', 800: '#0a0a0f', 700: '#12121a', 600: '#1a1a26' },
+            arcane: { gold: '#d4764e', silver: '#e0c0b0', bronze: '#8e4a2d' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { background-color: #050508; color: #e0c0b0; scroll-behavior: smooth; word-break: keep-all; }
+    .glass { background: rgba(10, 10, 15, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(212, 118, 78, 0.15); }
+    .input-field { background: #050508; border: 1px solid rgba(212, 118, 78, 0.3); color: #fff; border-radius: 8px; transition: 0.2s; }
+    .input-field:focus { border-color: #d4764e; outline: none; box-shadow: 0 0 10px rgba(212, 118, 78, 0.1); }
+    
+    /* 카드 컨테이너: 모바일과 데스크톱 크기 대응 */
+    .card-container { perspective: 1000px; width: 100px; height: 175px; }
+    @media (min-width: 640px) { .card-container { width: 150px; height: 260px; } }
+
+    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
+    .card-inner.flipped { transform: rotateY(180deg); }
+    .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 8px; border: 1px solid rgba(212, 118, 78, 0.3); overflow: hidden; }
+    .card-back { background: #1a1a26; background-size: cover; background-position: center; }
+    .card-front { transform: rotateY(180deg); background: #0a0a0f; background-size: cover; background-position: center; }
+
+    /* 마크다운 줄바꿈 및 가독성 */
+    #ai-response { white-space: pre-wrap; line-height: 1.8; }
+    
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #d4764e40; border-radius: 10px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans overflow-x-hidden">
+
+  <header class="p-4 md:p-6 flex justify-between items-center border-b border-white/5 sticky top-0 bg-obsidian-900/95 z-50 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 md:w-10 md:h-10 border border-arcane-gold rotate-45 flex items-center justify-center">
+        <span class="rotate-[-45deg] text-arcane-gold font-display font-bold text-sm md:text-base">M</span>
+      </div>
+      <h1 class="text-sm md:text-xl font-display font-bold tracking-[0.2em] text-arcane-gold uppercase text-shadow-glow">Mystic Tarot AI</h1>
+    </div>
+    
+    <div class="flex items-center gap-3 md:gap-6">
+      <div class="flex flex-col items-end">
+        <span class="text-[8px] uppercase tracking-widest text-gray-500 mb-1">Active Oracle</span>
+        <select id="header-model-select" class="bg-transparent border-none text-arcane-gold font-mono text-[10px] md:text-xs focus:ring-0 cursor-pointer"></select>
+      </div>
+      <button id="settings-btn" class="p-2 hover:bg-white/5 rounded transition text-arcane-gold">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full max-w-4xl mx-auto p-4 md:p-8 flex flex-col items-center">
+    <section class="w-full glass p-6 md:p-10 rounded-2xl md:rounded-3xl mb-8 md:mb-12 shadow-2xl relative">
+      <div class="relative z-10">
+        <div class="flex justify-between items-center mb-4 md:mb-6">
+          <label class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-arcane-gold">The Oracle's Gate</label>
+          <select id="active-deck-selector" class="bg-transparent border-none text-arcane-silver text-[9px] md:text-[10px] focus:ring-0 font-bold uppercase"></select>
+        </div>
+        
+        <textarea id="user-question" rows="4" class="input-field w-full p-4 md:p-6 text-base md:text-lg bg-obsidian-800/50 mb-6 border-arcane-gold/20" placeholder="해결하고 싶은 고민을 자세히 적어주세요..."></textarea>
+        
+        <button onclick="startReading()" class="w-full py-4 md:py-5 bg-gradient-to-r from-arcane-bronze to-arcane-gold text-white font-display font-bold tracking-[0.2em] md:tracking-[0.4em] text-base md:text-lg rounded-xl hover:opacity-90 transition shadow-lg uppercase">
+          Invoke Destiny
+        </button>
+      </div>
+    </section>
+
+    <section id="result-area" class="hidden w-full space-y-8 md:space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+      <div id="card-display" class="flex justify-center gap-3 md:gap-8 flex-wrap"></div>
+
+      <div class="glass p-6 md:p-12 rounded-2xl md:rounded-3xl border-white/5 relative">
+        <div class="absolute top-[-14px] left-1/2 translate-x-[-50%] px-4 py-1 bg-obsidian-900 border border-arcane-gold rounded-full text-[8px] md:text-[10px] font-display text-arcane-gold tracking-widest uppercase">
+          The Revelation
+        </div>
+        <div id="ai-response" class="prose prose-sm md:prose-base prose-invert max-w-none prose-p:leading-relaxed prose-headings:text-arcane-gold">
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="settings-modal" class="fixed inset-0 bg-obsidian-900/98 hidden z-[100] flex items-center justify-center p-2 md:p-4 backdrop-blur-xl">
+    <div class="glass w-full max-w-2xl rounded-2xl md:rounded-3xl p-6 md:p-10 max-h-[90vh] flex flex-col shadow-2xl border-arcane-gold/30">
+      <div class="flex justify-between items-center mb-6 md:mb-10">
+        <h2 class="text-xl md:text-2xl font-display font-bold text-arcane-gold tracking-widest uppercase">Settings</h2>
+        <button id="close-settings" class="text-gray-500 hover:text-white text-2xl">✕</button>
+      </div>
+
+      <div class="flex gap-4 md:gap-8 mb-6 border-b border-white/5 font-display text-[9px] md:text-xs tracking-widest uppercase font-bold overflow-x-auto whitespace-nowrap">
+        <button class="tab-btn pb-3 border-b-2 border-arcane-gold text-arcane-gold" data-tab="tab-models">Models</button>
+        <button class="tab-btn pb-3 border-b-2 border-transparent text-gray-500" data-tab="tab-decks">Decks</button>
+        <button class="tab-btn pb-3 border-b-2 border-transparent text-gray-500" data-tab="tab-persona">Persona</button>
+      </div>
+
+      <div id="tab-models" class="tab-content space-y-4 overflow-y-auto pr-2">
+        <div class="flex flex-col gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+          <div class="grid grid-cols-1 gap-3">
+            <select id="new-model-prov" class="input-field text-xs uppercase p-2">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="google">Google</option>
+              <option value="custom">Custom (URL)</option>
+            </select>
+            <input type="text" id="new-model-id" class="input-field text-xs font-mono p-2" placeholder="Model ID (e.g., gemini-1.5-flash)">
+            <input type="text" id="new-model-url" class="input-field text-xs font-mono p-2 hidden" placeholder="Custom Endpoint URL">
+            <input type="password" id="new-model-key" class="input-field text-xs font-mono p-2" placeholder="API KEY">
+          </div>
+          <button onclick="addModel()" class="bg-arcane-gold text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest">Add Oracle</button>
+        </div>
+        <div id="model-list" class="space-y-2"></div>
+      </div>
+
+      <div id="tab-decks" class="tab-content hidden space-y-4 overflow-y-auto pr-2">
+        <div class="p-4 bg-obsidian-800 rounded-xl border border-white/5 text-center">
+          <input type="text" id="new-deck-name" class="input-field w-full text-xs mb-3 p-2" placeholder="Deck Name">
+          <input type="file" id="deck-files-input" multiple accept="image/*" class="hidden">
+          <label for="deck-files-input" class="block p-4 border-2 border-dashed border-arcane-gold/20 rounded-xl text-center cursor-pointer text-[10px] text-arcane-gold uppercase font-bold">Select Images</label>
+          <button onclick="saveCustomDeck()" class="w-full mt-3 py-2 bg-white/5 text-arcane-gold text-[10px] font-bold uppercase border border-arcane-gold/20 rounded-lg">Register Deck</button>
+        </div>
+        <div id="deck-list-ui" class="space-y-2"></div>
+      </div>
+
+      <div id="tab-persona" class="tab-content hidden">
+        <textarea id="persona-prompt" rows="6" class="input-field w-full p-4 text-xs font-mono" placeholder="성격이나 말투를 정의하세요 (예: 중세 마녀 말투로 해줘)."></textarea>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-white/5 flex gap-3">
+        <button id="save-settings" class="flex-1 py-3 bg-arcane-gold text-white font-display font-bold tracking-widest rounded-xl uppercase text-sm shadow-lg">Save & Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="fixed inset-0 bg-obsidian-900/90 hidden z-[200] flex flex-col items-center justify-center">
+    <div class="w-12 h-12 border-2 border-arcane-gold border-t-transparent rounded-full animate-spin mb-4"></div>
+    <p id="loading-text" class="font-display tracking-[0.3em] text-arcane-gold animate-pulse uppercase text-[10px]">Consulting the Void</p>
+  </div>
+
+  <script>
+    // 마크다운 설정
+    marked.setOptions({ breaks: true, gfm: true });
+
+    const BASE_MASTER_PROMPT = `당신은 세계 최고의 타로 마스터입니다. 마크다운 형식을 사용하여 가독성 있게 답변하세요. 제목(#, ##), 굵은 글씨(**), 목록(- )을 사용하십시오. 반드시 한국어로 답변하세요.`;
+
+    let db;
+    let config = JSON.parse(localStorage.getItem('mystic_tarot_config')) || {
+      models: [],
+      activeModelIdx: 0,
+      persona: "",
+      activeDeck: "none"
+    };
+
+    const initDB = () => {
+      return new Promise((resolve) => {
+        const request = indexedDB.open("MysticTarotDB", 1);
+        request.onupgradeneeded = e => e.target.result.createObjectStore("decks", { keyPath: "name" });
+        request.onsuccess = e => { db = e.target.result; resolve(); };
+      });
+    };
+
+    const refreshUI = () => {
+      // 상단 모델 선택기 업데이트
+      const headerSelect = document.getElementById('header-model-select');
+      headerSelect.innerHTML = config.models.length ? '' : '<option value="">None</option>';
+      config.models.forEach((m, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `[${m.prov.toUpperCase()}] ${m.mid}`;
+        opt.selected = (config.activeModelIdx == i);
+        headerSelect.appendChild(opt);
+      });
+
+      // 설정창 모델 목록 업데이트
+      const list = document.getElementById('model-list');
+      list.innerHTML = '';
+      config.models.forEach((m, i) => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center p-3 bg-white/5 rounded-lg border " + (config.activeModelIdx == i ? "border-arcane-gold" : "border-white/5");
+        div.innerHTML = `<span class="text-[10px] font-mono text-arcane-silver">${m.mid}</span><button onclick="removeModel(${i})" class="text-red-900 text-[10px] font-bold">DEL</button>`;
+        list.appendChild(div);
+      });
+      renderDeckLists();
+    };
+
+    const renderDeckLists = async () => {
+      const tx = db.transaction("decks", "readonly");
+      const decks = await new Promise(res => tx.objectStore("decks").getAll().onsuccess = e => res(e.target.result));
+      const selector = document.getElementById('active-deck-selector');
+      const listUI = document.getElementById('deck-list-ui');
+      selector.innerHTML = '<option value="none">Text Only</option>';
+      listUI.innerHTML = '';
+      decks.forEach(deck => {
+        const opt = document.createElement('option');
+        opt.value = deck.name;
+        opt.textContent = deck.name;
+        opt.selected = (config.activeDeck === deck.name);
+        selector.appendChild(opt);
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5";
+        div.innerHTML = `<span class="text-xs">${deck.name}</span><button onclick="deleteDeck('${deck.name}')" class="text-red-900 text-[10px]">DEL</button>`;
+        listUI.appendChild(div);
+      });
+    };
+
+    const addModel = () => {
+      const prov = document.getElementById('new-model-prov').value;
+      const mid = document.getElementById('new-model-id').value;
+      const key = document.getElementById('new-model-key').value;
+      const url = document.getElementById('new-model-url').value;
+      if (!mid || !key) return alert("모델 ID와 API KEY를 입력하세요.");
+      config.models.push({ prov, mid, key, url: prov === 'custom' ? url : null });
+      refreshUI();
+    };
+
+    const removeModel = (i) => { if(confirm("삭제하시겠습니까?")) { config.models.splice(i, 1); refreshUI(); } };
+
+    const saveCustomDeck = async () => {
+      const name = document.getElementById('new-deck-name').value;
+      const files = document.getElementById('deck-files-input').files;
+      if (!name || files.length < 1) return alert("덱 이름과 이미지들을 선택하세요.");
+      const images = {};
+      const loadPromises = Array.from(files).map(file => new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = e => { images[file.name] = e.target.result; res(); };
+        reader.readAsDataURL(file);
+      }));
+      document.getElementById('loading-overlay').classList.remove('hidden');
+      await Promise.all(loadPromises);
+      const tx = db.transaction("decks", "readwrite");
+      tx.objectStore("decks").put({ name, images });
+      document.getElementById('loading-overlay').classList.add('hidden');
+      refreshUI();
+    };
+
+    const deleteDeck = (name) => { if(confirm("삭제?")) { db.transaction("decks", "readwrite").objectStore("decks").delete(name); refreshUI(); } };
+
+    const startReading = async () => {
+      const q = document.getElementById('user-question').value;
+      const selectedModelIdx = document.getElementById('header-model-select').value;
+      
+      if (!q) return alert("질문을 입력하세요.");
+      if (selectedModelIdx === "" || config.models.length === 0) return alert("모델을 등록하고 선택해주세요.");
+
+      config.activeModelIdx = parseInt(selectedModelIdx);
+      const overlay = document.getElementById('loading-overlay');
+      const resArea = document.getElementById('result-area');
+      const cardDisplay = document.getElementById('card-display');
+      const responseBox = document.getElementById('ai-response');
+
+      overlay.classList.remove('hidden');
+      resArea.classList.remove('hidden');
+      cardDisplay.innerHTML = '';
+      responseBox.innerHTML = '<p class="text-center italic opacity-50">카드를 셔플하는 중...</p>';
+      
+      const selected = [Math.floor(Math.random()*78), Math.floor(Math.random()*78), Math.floor(Math.random()*78)];
+      let deckImages = null;
+      if (config.activeDeck !== 'none') {
+        const tx = db.transaction("decks", "readonly");
+        const deckObj = await new Promise(res => tx.objectStore("decks").get(config.activeDeck).onsuccess = e => res(e.target.result));
+        if (deckObj) deckImages = deckObj.images;
+      }
+
+      selected.forEach((id, i) => {
+        const container = document.createElement('div');
+        container.className = 'card-container';
+        const backSrc = (deckImages && (deckImages['back.jpg'] || deckImages['back.png'])) || '';
+        const frontSrc = (deckImages && (deckImages[`${id}.jpg`] || deckImages[`${id}.png`])) || '';
+        container.innerHTML = `<div class="card-inner" id="card-inner-${i}"><div class="card-back" style="background-image: url('${backSrc}')"></div><div class="card-front" style="background-image: url('${frontSrc}')">${!frontSrc ? id : ''}</div></div>`;
+        cardDisplay.appendChild(container);
+        setTimeout(() => document.getElementById(`card-inner-${i}`).classList.add('flipped'), 600 + (i * 400));
+      });
+
+      try {
+        const activeModel = config.models[config.activeModelIdx];
+        const systemMsg = `${BASE_MASTER_PROMPT}\n\n[Persona]: ${config.persona}`;
+        const userMsg = `질문: ${q}\n카드: ${selected.join(', ')} (0:과거, 1:현재, 2:미래)`;
+        
+        const result = await callAIProxy(activeModel, systemMsg, userMsg);
+        overlay.classList.add('hidden');
+        responseBox.innerHTML = marked.parse(result);
+        window.scrollTo({ top: responseBox.offsetTop - 100, behavior: 'smooth' });
+      } catch (err) {
+        overlay.classList.add('hidden');
+        if (err.message.includes("quota") || err.message.includes("429")) {
+          responseBox.innerHTML = `<div class="text-red-400 p-4 border border-red-900 bg-red-900/10 rounded-xl"><p class="font-bold">⚠️ 사용량 초과 (Quota Exceeded)</p><p class="text-xs">잠시 후(30초~1분) 다시 시도하거나 다른 모델을 선택하세요.</p></div>`;
+        } else {
+          responseBox.innerHTML = `<p class="text-red-500 text-xs">Error: ${err.message}</p>`;
+        }
+      }
+    };
+
+    const callAIProxy = async (model, sys, usr) => {
+      let endpoint, body, headers;
+      if (model.prov === 'openai' || model.prov === 'custom') {
+        endpoint = model.url || 'https://api.openai.com/v1/chat/completions';
+        headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${model.key}` };
+        body = JSON.stringify({ model: model.mid, messages: [{role: "system", content: sys}, {role: "user", content: usr}] });
+      } else if (model.prov === 'anthropic') {
+        endpoint = 'https://api.anthropic.com/v1/messages';
+        headers = { 'Content-Type': 'application/json', 'x-api-key': model.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
+        body = JSON.stringify({ model: model.mid, max_tokens: 2000, system: sys, messages: [{role: "user", content: usr}] });
+      } else if (model.prov === 'google') {
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model.mid}:generateContent?key=${model.key}`;
+        headers = { 'Content-Type': 'application/json' };
+        body = JSON.stringify({ contents: [{ role: "user", parts: [{ text: `${sys}\n\n${usr}` }] }] });
+      }
+
+      const res = await fetch(endpoint, { method: 'POST', headers, body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "HTTP Error " + res.status);
+
+      if (model.prov === 'openai' || model.prov === 'custom') return data.choices[0].message.content;
+      if (model.prov === 'anthropic') return data.content[0].text;
+      if (model.prov === 'google') return data.candidates[0].content.parts[0].text;
+    };
+
+    document.getElementById('settings-btn').onclick = () => document.getElementById('settings-modal').classList.remove('hidden');
+    document.getElementById('close-settings').onclick = () => document.getElementById('settings-modal').classList.add('hidden');
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.className = "tab-btn pb-3 border-b-2 border-transparent text-gray-500");
+        btn.className = "tab-btn pb-3 border-b-2 border-arcane-gold text-arcane-gold";
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.getElementById(btn.dataset.tab).classList.remove('hidden');
+      };
+    });
+
+    document.getElementById('save-settings').onclick = () => {
+      config.persona = document.getElementById('persona-prompt').value;
+      const headerVal = document.getElementById('header-model-select').value;
+      config.activeModelIdx = headerVal !== "" ? parseInt(headerVal) : 0;
+      config.activeDeck = document.getElementById('active-deck-selector').value;
+      localStorage.setItem('mystic_tarot_config', JSON.stringify(config));
+      alert("설정이 저장되었습니다.");
+      location.reload();
+    };
+
+    document.getElementById('new-model-prov').onchange = (e) => {
+      document.getElementById('new-model-url').classList.toggle('hidden', e.target.value !== 'custom');
+    };
+
+    (async () => { await initDB(); refreshUI(); })();
+  </script>
+</body>
+</html>
