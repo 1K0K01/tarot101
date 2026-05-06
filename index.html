@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MYSTIC TAROT AI — 프리미엄 AI 타로 마스터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; background-color: #050508; color: #e0c0b0; scroll-behavior: smooth; }
+    .font-display { font-family: 'Cinzel', serif; }
+    .glass-card { background: rgba(18, 18, 26, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(212, 118, 78, 0.2); }
+    .input-field { background: #0a0a0f; border: 1px solid rgba(212, 118, 78, 0.3); color: #fff; border-radius: 8px; padding: 12px; width: 100%; transition: 0.3s; }
+    .input-field:focus { border-color: #d4764e; outline: none; box-shadow: 0 0 15px rgba(212, 118, 78, 0.3); }
+    .btn-primary { background: linear-gradient(135deg, #d4764e, #8e4a2d); color: white; padding: 14px 28px; border-radius: 8px; font-weight: 700; transition: 0.3s; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(212, 118, 78, 0.4); }
+    .card-slot { width: 120px; height: 200px; border: 1px solid rgba(212, 118, 78, 0.3); border-radius: 10px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #a08878; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <header class="p-6 flex justify-between items-center border-b border-white/10 sticky top-0 bg-[#050508]/80 backdrop-blur-md z-40">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🔮</span>
+      <h1 class="text-xl font-display font-bold text-[#d4764e] tracking-widest">MYSTIC TAROT AI</h1>
+    </div>
+    <button id="settings-btn" class="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-lg transition text-sm text-gray-400">
+      <span>⚙️ AI 설정</span>
+    </button>
+  </header>
+
+  <main class="flex-1 max-w-4xl mx-auto p-6 md:p-12 w-full">
+    <section class="space-y-10">
+      <div class="glass-card p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 p-4 opacity-10 font-display text-6xl">TAROT</div>
+        <label class="block text-xs font-bold uppercase tracking-[0.2em] mb-4 text-[#d4764e]">Consultation</label>
+        <h2 class="text-2xl font-display mb-6">당신의 고민은 무엇인가요?</h2>
+        <textarea id="user-question" rows="4" class="input-field mb-6 text-lg" placeholder="상황을 자세히 적어주실수록 마스터가 더 깊은 통찰을 드릴 수 있습니다."></textarea>
+        
+        <div class="flex flex-col md:flex-row gap-4 items-center">
+            <button onclick="startReading()" class="btn-primary w-full md:w-auto px-12">운명의 카드 읽기</button>
+            <p class="text-xs text-gray-500 italic">카드는 당신의 무의식을 비추는 거울입니다.</p>
+        </div>
+      </div>
+
+      <div id="result-area" class="hidden space-y-8 animate-in fade-in duration-700">
+        <div id="card-display" class="flex justify-center gap-4 flex-wrap">
+            <div class="card-slot">Card 1</div>
+            <div class="card-slot">Card 2</div>
+            <div class="card-slot">Card 3</div>
+        </div>
+
+        <div class="glass-card p-8 md:p-12 rounded-3xl leading-relaxed">
+          <div id="ai-response" class="prose prose-invert max-w-none text-gray-200">
+            </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="settings-modal" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-xl rounded-3xl p-8 max-h-[90vh] overflow-y-auto border-[#d4764e]/40">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-2xl font-display font-bold text-[#d4764e]">AI 마스터 설정</h2>
+        <button id="close-settings" class="text-gray-400 hover:text-white text-2xl">✕</button>
+      </div>
+
+      <div class="space-y-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Provider</label>
+                <select id="ai-provider" class="input-field text-sm">
+                  <option value="openai">OpenAI (GPT-4o)</option>
+                  <option value="anthropic">Anthropic (Claude 3.5)</option>
+                  <option value="google">Google (Gemini 1.5)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">API Key</label>
+                <input type="password" id="api-key" class="input-field text-sm" placeholder="sk-...">
+            </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">추가 지시사항 (캐릭터성/어조)</label>
+          <textarea id="character-prompt" rows="4" class="input-field text-sm" placeholder="예: 무뚝뚝하지만 핵심을 찌르는 마스터처럼 말해줘 / 존댓말 대신 신비로운 반말을 사용해줘"></textarea>
+          <p class="text-[10px] text-gray-500 mt-2">* 기본 타로 리딩 로직은 이미 내장되어 있습니다. 여기엔 캐릭터 설정만 입력하세요.</p>
+        </div>
+
+        <button id="save-settings" class="btn-primary w-full">설정 저장 및 적용</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script>
+    // --- [고정] 기본 시스템 프롬프트 (타로 리딩 로직) ---
+    const BASE_SYSTEM_PROMPT = `당신은 전문 타로 마스터입니다. 
+내담자의 상황 요약(2-3문장), 스프레드 이름, 각 카드의 상세 해석, 종합 조언 순으로 답변하세요.
+해석 시 반드시 아래 지침을 준수하세요:
+- 나쁜 예: "힘 카드는 내면의 강인함을 상징합니다." (단순 키워드 나열 금지)
+- 좋은 예: "이직 고민에서 '숨겨진 영향' 자리에 힘 역방향이 나왔다는 건, 현재 자존감이 낮아진 상태가 이직 충동의 원인일 수 있다는 뜻입니다."
+상황과 카드 위치를 유기적으로 결합하여 통찰력 있게 말하세요.`;
+
+    // --- 설정 관리 ---
+    const settings = {
+      provider: localStorage.getItem('tarot_provider') || 'openai',
+      apiKey: localStorage.getItem('tarot_apiKey') || '',
+      characterPrompt: localStorage.getItem('tarot_characterPrompt') || ''
+    };
+
+    const modal = document.getElementById('settings-modal');
+    document.getElementById('settings-btn').onclick = () => {
+      document.getElementById('ai-provider').value = settings.provider;
+      document.getElementById('api-key').value = settings.apiKey;
+      document.getElementById('character-prompt').value = settings.characterPrompt;
+      modal.classList.remove('hidden');
+    };
+
+    document.getElementById('close-settings').onclick = () => modal.classList.add('hidden');
+
+    document.getElementById('save-settings').onclick = () => {
+      settings.provider = document.getElementById('ai-provider').value;
+      settings.apiKey = document.getElementById('api-key').value;
+      settings.characterPrompt = document.getElementById('character-prompt').value;
+
+      localStorage.setItem('tarot_provider', settings.provider);
+      localStorage.setItem('tarot_apiKey', settings.apiKey);
+      localStorage.setItem('tarot_characterPrompt', settings.characterPrompt);
+
+      alert('AI 마스터의 설정이 업데이트되었습니다.');
+      modal.classList.add('hidden');
+    };
+
+    // --- 리딩 실행 ---
+    async function startReading() {
+      const question = document.getElementById('user-question').value;
+      if (!question) return alert('고민을 먼저 입력해주세요.');
+      if (!settings.apiKey) return alert('설정에서 API 키를 입력해야 마스터와 대화할 수 있습니다.');
+
+      const resultArea = document.getElementById('result-area');
+      const responseDiv = document.getElementById('ai-response');
+      
+      resultArea.classList.remove('hidden');
+      responseDiv.innerHTML = '<div class="flex flex-col items-center py-10"><span class="text-4xl animate-bounce mb-4">🕯️</span><p class="font-display tracking-widest opacity-50">Reading the Destiny...</p></div>';
+      
+      window.scrollTo({ top: resultArea.offsetTop - 100, behavior: 'smooth' });
+
+      try {
+        // 최종 프롬프트 조합: 고정 로직 + 사용자 커스텀 캐릭터성
+        const finalSystemPrompt = `${BASE_SYSTEM_PROMPT}\n\n[추가 캐릭터성 지침]:\n${settings.characterPrompt}`;
+        
+        // 실제 API 호출 로직 (시뮬레이션 결과)
+        const result = await callRealAI(finalSystemPrompt, question);
+        responseDiv.innerHTML = marked.parse(result);
+      } catch (err) {
+        responseDiv.innerHTML = `<p class="text-red-400">오류가 발생했습니다: ${err.message}</p>`;
+      }
+    }
+
+    async function callRealAI(system, user) {
+      // 실제 구현 시 각 Provider의 API 양식에 맞춰 fetch 호출
+      // 예: OpenAI API 호출 구조
+      /*
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [{role: "system", content: system}, {role: "user", content: user}]
+        })
+      });
+      const data = await res.json();
+      return data.choices[0].message.content;
+      */
+      
+      // 시뮬레이션 응답
+      return `## 질문자의 상황 분석\n내담자님은 현재 "${user.substring(0,20)}..."와 같은 고민으로 마음이 무거우시군요.\n\n## 스프레드: 별의 인도 (The Star's Guidance)\n\n## 리딩 결과\n설정된 캐릭터성(${settings.characterPrompt || '기본'})을 바탕으로 한 깊이 있는 타로 리딩이 여기에 출력됩니다. (실제 API를 연결하면 실시간 리딩이 진행됩니다.)`;
+    }
+  </script>
+</body>
+</html>
